@@ -50,14 +50,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class FileDataStorageManagerTest extends AbstractIT {
+abstract public class FileDataStorageManagerTest extends AbstractIT {
 
-    private FileDataStorageManager sut;
+    protected FileDataStorageManager sut;
 
     @Before
-    public void before() {
-        sut = new FileDataStorageManager(account, targetContext.getContentResolver());
-    }
+    abstract public void before();
 
     @After
     public void after() {
@@ -71,6 +69,12 @@ public class FileDataStorageManagerTest extends AbstractIT {
     public void simpleTest() {
         assertTrue(sut.getFileByPath("/").fileExists());
         assertNull(sut.getFileByPath("/123123"));
+    }
+
+    @Test
+    public void getAllFiles_NoAvailable() {
+        sut.deleteAllFiles();
+        assertEquals(0, sut.getAllFiles().size());
     }
 
     @Test
@@ -168,7 +172,7 @@ public class FileDataStorageManagerTest extends AbstractIT {
 
         contentValues.add(cv);
 
-        sut.saveVirtuals(virtualType, contentValues);
+        sut.saveVirtuals(contentValues);
 
         assertEquals(remotePath, ocFile.getRemotePath());
 
@@ -195,4 +199,45 @@ public class FileDataStorageManagerTest extends AbstractIT {
                      sut.getFolderContent(sut.getFileByPath("/"), false).get(0));
     }
 
+    @Test
+    public void testSaveNewFile() {
+        assertTrue(new CreateFolderRemoteOperation("/1/1/", true).execute(client).isSuccess());
+
+        assertTrue(new RefreshFolderOperation(sut.getFileByPath("/"),
+                                              System.currentTimeMillis() / 1000,
+                                              false,
+                                              false,
+                                              sut,
+                                              account,
+                                              targetContext).execute(client).isSuccess());
+
+        assertTrue(new RefreshFolderOperation(sut.getFileByPath("/1/"),
+                                              System.currentTimeMillis() / 1000,
+                                              false,
+                                              false,
+                                              sut,
+                                              account,
+                                              targetContext).execute(client).isSuccess());
+
+        assertTrue(new RefreshFolderOperation(sut.getFileByPath("/1/1/"),
+                                              System.currentTimeMillis() / 1000,
+                                              false,
+                                              false,
+                                              sut,
+                                              account,
+                                              targetContext).execute(client).isSuccess());
+
+        OCFile newFile = new OCFile("/1/1/1.txt");
+
+        sut.saveNewFile(newFile);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSaveNewFile_NonexistingParent() {
+        assertTrue(new CreateFolderRemoteOperation("/1/1/", true).execute(client).isSuccess());
+
+        OCFile newFile = new OCFile("/1/1/1.txt");
+
+        sut.saveNewFile(newFile);
+    }
 }

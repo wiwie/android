@@ -343,7 +343,7 @@ public class FileDataStorageManager {
      * @param updatedFiles
      * @param filesToRemove
      */
-    public void saveFolder(OCFile folder, ArrayList<OCFile> updatedFiles, Collection<OCFile> filesToRemove) {
+    public void saveFolder(OCFile folder, List<OCFile> updatedFiles, Collection<OCFile> filesToRemove) {
         Log_OC.d(TAG, "Saving folder " + folder.getRemotePath() + " with " + updatedFiles.size()
             + " children and " + filesToRemove.size() + " files to remove");
 
@@ -351,7 +351,7 @@ public class FileDataStorageManager {
 
         // prepare operations to insert or update files to save in the given folder
         for (OCFile ocFile : updatedFiles) {
-            ContentValues cv = createContentValueForFile(file, folder);
+            ContentValues contentValues = createContentValueForFile(ocFile, folder);
 
             if (fileExists(ocFile.getFileId()) || fileExists(ocFile.getRemotePath())) {
                 long fileId;
@@ -367,7 +367,9 @@ public class FileDataStorageManager {
                                    .build());
             } else {
                 // adding a new file
-                operations.add(ContentProviderOperation.newInsert(ProviderTableMeta.CONTENT_URI).withValues(contentValues).build());
+                operations.add(ContentProviderOperation.newInsert(ProviderTableMeta.CONTENT_URI)
+                                   .withValues(contentValues)
+                                   .build());
             }
         }
 
@@ -534,9 +536,9 @@ public class FileDataStorageManager {
                 if (removeDBData) {
                     //Uri file_uri = Uri.withAppendedPath(ProviderTableMeta.CONTENT_URI_FILE,
                     // ""+file.getFileId());
-                    Uri file_uri = ContentUris.withAppendedId(ProviderTableMeta.CONTENT_URI_FILE, file.getFileId());
+                    Uri file_uri = ContentUris.withAppendedId(ProviderTableMeta.CONTENT_URI_FILE, ocFile.getFileId());
                     String where = ProviderTableMeta.FILE_ACCOUNT_OWNER + AND + ProviderTableMeta.FILE_PATH + "=?";
-                    String[] whereArgs = new String[]{account.name, file.getRemotePath()};
+                    String[] whereArgs = new String[]{account.name, ocFile.getRemotePath()};
                     int deleted = 0;
                     if (getContentProviderClient() != null) {
                         try {
@@ -597,12 +599,12 @@ public class FileDataStorageManager {
         int deleted = 0;
         if (getContentProviderClient() != null) {
             try {
-                deleted = getContentProviderClient().delete(folder_uri, where, whereArgs);
+                deleted = getContentProviderClient().delete(folderUri, where, whereArgs);
             } catch (RemoteException e) {
                 Log_OC.d(TAG, e.getMessage(), e);
             }
         } else {
-            deleted = getContentResolver().delete(folder_uri, where, whereArgs);
+            deleted = getContentResolver().delete(folderUri, where, whereArgs);
         }
         return deleted > 0;
     }
@@ -749,7 +751,7 @@ public class FileDataStorageManager {
                 }
 
             } catch (Exception e) {
-                Log_OC.e(TAG, "Fail to update " + file.getFileId() + " and descendants in database", e);
+                Log_OC.e(TAG, "Fail to update " + ocFile.getFileId() + " and descendants in database", e);
             }
 
             /// 4. move in local file system
@@ -2294,6 +2296,38 @@ public class FileDataStorageManager {
                 Log_OC.e(TAG, "Exception in deleteAllFiles for account " + account.name + ": " + e.getMessage(), e);
             }
         }
+    }
+
+    public List<OCFile> getAllFiles() {
+        String selection = ProviderTableMeta.FILE_ACCOUNT_OWNER + "= ? ";
+        String[] selectionArgs = new String[]{account.name};
+
+        List<OCFile> folderContent = new ArrayList<>();
+
+        Uri requestURI = ProviderTableMeta.CONTENT_URI_DIR;
+        Cursor cursor;
+
+        if (getContentProviderClient() != null) {
+            try {
+                cursor = getContentProviderClient().query(requestURI, null, selection, selectionArgs, null);
+            } catch (RemoteException e) {
+                Log_OC.e(TAG, e.getMessage(), e);
+                return folderContent;
+            }
+        } else {
+            cursor = getContentResolver().query(requestURI, null, selection, selectionArgs, null);
+        }
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                do {
+                    folderContent.add(createFileInstance(cursor));
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
+        }
+
+        return folderContent;
     }
 
     private String getString(Cursor cursor, String columnName) {
