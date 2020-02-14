@@ -404,5 +404,6 @@ public class UploadListActivity extends FileActivity {
     public void onDestroy() {
         super.onDestroy();
         unbinder.unbind();
+        this.uploadListAdapter.onDestroy();
     }
 }
