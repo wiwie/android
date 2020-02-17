@@ -43,6 +43,7 @@ import android.view.WindowManager;
 
 import com.evernote.android.job.JobManager;
 import com.evernote.android.job.JobRequest;
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.appinfo.AppInfo;
 import com.nextcloud.client.core.Clock;
@@ -198,14 +199,6 @@ public class MainApp extends MultiDexApplication implements HasAndroidInjector {
         return powerManagementService;
     }
 
-    /**
-     * Temporary getter enabling intermediate refactoring.
-     * TODO: remove when FileSyncHelper is refactored/removed
-     */
-    public BackgroundJobManager getBackgroundJobManager() {
-        return backgroundJobManager;
-    }
-
     private String getAppProcessName() {
         String processName = "";
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
@@ -279,7 +272,8 @@ public class MainApp extends MultiDexApplication implements HasAndroidInjector {
                 connectivityService,
                 powerManagementService,
                 clock,
-                eventBus
+                eventBus,
+                backgroundJobManager
             )
         );
 
@@ -317,7 +311,7 @@ public class MainApp extends MultiDexApplication implements HasAndroidInjector {
                            powerManagementService,
                            backgroundJobManager,
                            clock);
-        initContactsBackup(accountManager);
+        initContactsBackup(accountManager, backgroundJobManager);
         notificationChannels();
 
 
@@ -387,13 +381,13 @@ public class MainApp extends MultiDexApplication implements HasAndroidInjector {
         securityKeyManager.init(this, config);
     }
 
-    public static void initContactsBackup(UserAccountManager accountManager) {
+    public static void initContactsBackup(UserAccountManager accountManager, BackgroundJobManager backgroundJobManager) {
         ArbitraryDataProvider arbitraryDataProvider = new ArbitraryDataProvider(mContext.getContentResolver());
-        Account[] accounts = accountManager.getAccounts();
+        List<User> users = accountManager.getAllUsers();
+        for (User user : users) {
+            if (arbitraryDataProvider.getBooleanValue(user.toPlatformAccount(), PREFERENCE_CONTACTS_AUTOMATIC_BACKUP)) {
+                backgroundJobManager.schedulePeriodicContactsBackup(user);
 
-        for (Account account : accounts) {
-            if (arbitraryDataProvider.getBooleanValue(account, PREFERENCE_CONTACTS_AUTOMATIC_BACKUP)) {
-                ContactsPreferenceActivity.startContactBackupJob(account);
             }
         }
     }

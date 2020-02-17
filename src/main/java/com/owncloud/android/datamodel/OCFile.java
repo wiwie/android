@@ -19,7 +19,6 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 package com.owncloud.android.datamodel;
 
 
@@ -61,7 +60,7 @@ public class OCFile implements Parcelable, Comparable<OCFile>, ServerFileInterfa
     @Getter @Setter private long parentId;
     @Getter @Setter private long fileLength;
     @Getter @Setter private long creationTimestamp; // UNIX timestamp of the time the file was created
-    @Getter @Setter private long modificationTimestamp; // UNIX timestamp of the file modification time
+    private long modificationTimestamp; // UNIX timestamp of the file modification time
     /** UNIX timestamp of the modification time, corresponding to the value returned by the server
      * in the last synchronization of THE CONTENTS of this file.
      */
@@ -518,6 +517,14 @@ public class OCFile implements Parcelable, Comparable<OCFile>, ServerFileInterfa
     public boolean canWrite() {
         String permissions = getPermissions();
         return permissions != null && permissions.contains(PERMISSION_CAN_WRITE);
+    }
+
+    public long getModificationTimestamp() {
+        return modificationTimestamp;
+    }
+
+    public void setModificationTimestamp(long modificationTimestamp) {
+        this.modificationTimestamp = modificationTimestamp;
     }
 
     public static final Parcelable.Creator<OCFile> CREATOR = new Parcelable.Creator<OCFile>() {
