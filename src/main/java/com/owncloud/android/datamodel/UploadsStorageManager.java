@@ -26,8 +26,10 @@ package com.owncloud.android.datamodel;
 import android.accounts.Account;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Handler;
 
 import com.nextcloud.client.account.CurrentAccountProvider;
 import com.nextcloud.client.account.User;
@@ -53,6 +55,7 @@ public class UploadsStorageManager extends Observable {
 
     private static final String AND = " AND ";
     private static final int SINGLE_RESULT = 1;
+    private final ContentObserver databaseObserver;
 
     private ContentResolver mContentResolver;
     private CurrentAccountProvider currentAccountProvider;
@@ -66,6 +69,14 @@ public class UploadsStorageManager extends Observable {
         }
         mContentResolver = contentResolver;
         this.currentAccountProvider = currentAccountProvider;
+
+        this.databaseObserver = new ContentObserver(new Handler()) {
+            @Override
+            public void onChange(boolean selfChange) {
+                notifyObserversNow();
+            }
+        };
+        getDB().registerContentObserver(ProviderTableMeta.CONTENT_URI_UPLOADS, true, this.databaseObserver);
     }
 
     /**
@@ -563,6 +574,10 @@ public class UploadsStorageManager extends Observable {
                 ProviderTableMeta.CONTENT_URI_UPLOADS,
                 ProviderTableMeta.UPLOADS_ACCOUNT_NAME + "=?",
                 new String[]{account.name});
+    }
+
+    public void destroy() {
+        getDB().unregisterContentObserver(this.databaseObserver);
     }
 
     public enum UploadStatus {

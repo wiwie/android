@@ -15,6 +15,7 @@ import com.owncloud.android.operations.RemoveFileOperation;
 import com.owncloud.android.operations.UploadFileOperation;
 import com.owncloud.android.utils.FileStorageUtils;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -163,5 +164,12 @@ public class UploadIT extends AbstractIT {
 
         // cleanup
         new RemoveFileOperation("/testUpload/", false, account, false, targetContext).execute(client, getStorageManager());
+    }
+
+    @After
+    public void tearDown() {
+        if (storageManager != null) {
+            storageManager.destroy();
+        }
     }
 }

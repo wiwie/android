@@ -68,8 +68,12 @@ public class UploadStorageManagerTest {
 
     @After
     public void tearDown() {
-        for (Account account : Accounts) {
-            uploadsStorageManager.removeAccountUploads(account);
+        if (uploadsStorageManager != null) {
+            for (Account account : Accounts) {
+                uploadsStorageManager.removeAccountUploads(account);
+            }
+
+            uploadsStorageManager.destroy();
         }
     }
 }
